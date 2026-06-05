@@ -1,0 +1,583 @@
+// ═══════════════════════════════════════════════════════════════
+// MTAJER ZONE — Prisma Schema v3
+// MongoDB Atlas (migrated from PostgreSQL)
+// ═══════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTE: MongoDB Prisma does NOT support enums at the DB level.
+// Enums are validated in Prisma client only.
+// All enum fields stored as String in MongoDB.
+// ═══════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════
+// USER & AUTH
+// ═══════════════════════════════════════════════════════════════
+
+model User {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  name              String?
+  email             String    @unique
+  emailVerified     DateTime?
+  image             String?
+  password          String?
+  phone             String?
+  role              String    @default("CUSTOMER")
+  isOwner           Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  deletedAt         DateTime?
+  loginAttempts     Int       @default(0)
+  lockedUntil       DateTime?
+  verifyToken       String?   @unique
+  verifyTokenExpiry DateTime?
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  stores         Store[]
+  orders         Order[]
+  reviews        Review[]
+  cart           Cart?
+  wishlist       Wishlist?
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  followedStores StoreFollower[]
+
+ 
+  @@index([role])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// Auth.js required models
+model Account {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique
+  userId       String   @db.ObjectId
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STORE CATEGORIES
+// ═══════════════════════════════════════════════════════════════
+
+model StoreCategory {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  nameAr      String
+  emoji       String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  stores Store[]
+
+ 
+  @@index([isActive])
+  @@map("store_categories")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STORE
+// ═══════════════════════════════════════════════════════════════
+
+model Store {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  slug            String   @unique
+  description     String?
+  logo            String?
+  logoPublicId    String?
+  cover           String?
+  coverPublicId   String?
+  primaryColor    String   @default("#4F6BFF")
+  status          String   @default("PENDING")
+  isVerified      Boolean  @default(false)
+  isFeatured      Boolean  @default(false)
+  featuredUntil   DateTime?
+  deletedAt       DateTime?
+
+  whatsappNumber  String
+  countryCode     String   @default("20")
+  phone           String?
+  email           String?
+
+  address         String?
+  city            String?
+  country         String?
+  latitude        Float?
+  longitude       Float?
+
+  welcomeMessage  String?
+  orderButtonText String   @default("اطلب عبر واتساب")
+  orderTemplate   String?
+  enableOrders    Boolean  @default(true)
+
+  businessHours   Json?
+
+  instagramUrl    String?
+  tiktokUrl       String?
+  facebookUrl     String?
+  twitterUrl      String?
+  websiteUrl      String?
+
+  seoTitle        String?
+  seoDescription  String?
+  seoKeywords     String?
+
+  totalVisits     Int      @default(0)
+  totalOrders     Int      @default(0)
+  totalProducts   Int      @default(0)
+  totalFollowers  Int      @default(0)
+  averageRating   Float    @default(0)
+
+  rejectionReason String?
+  suspendReason   String?
+  approvedAt      DateTime?
+  approvedBy      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId           String          @db.ObjectId
+  categoryId        String?         @db.ObjectId
+
+  owner             User            @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  category          StoreCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subscription      StoreSubscription?
+  products          Product[]
+  orders            Order[]
+  reviews           Review[]
+  followers         StoreFollower[]
+  productCategories ProductCategory[]
+  coupons           Coupon[]
+  carts             Cart[]
+
+  @@index([status])
+  @@index([ownerId])
+  @@index([categoryId])
+  @@index([isFeatured])
+  @@index([isVerified])
+  @@index([deletedAt])
+  @@map("stores")
+}
+
+model StoreFollower {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  storeId   String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, storeId])
+  @@index([storeId])
+  @@index([userId])
+  @@map("store_followers")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SUBSCRIPTION
+// ═══════════════════════════════════════════════════════════════
+
+model StoreSubscription {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  plan         String   @default("STARTER")
+  status       String   @default("ACTIVE")
+  startDate    DateTime @default(now())
+  endDate      DateTime
+  autoRenew    Boolean  @default(true)
+  priceInCents Int
+  currency     String   @default("EGP")
+  isYearly     Boolean  @default(false)
+  paymentRef   String?
+
+  storeId String @unique @db.ObjectId
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([endDate])
+  @@map("store_subscriptions")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRODUCT CATEGORIES (per store)
+// ═══════════════════════════════════════════════════════════════
+
+model ProductCategory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  nameAr    String?
+  emoji     String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  storeId   String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@index([storeId])
+  @@map("product_categories")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PRODUCT
+// ═══════════════════════════════════════════════════════════════
+
+model Product {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  description         String?
+  priceInCents        Int
+  comparePriceInCents Int?
+  sku                 String?
+  stock               Int?
+  trackStock          Boolean  @default(false)
+  status              String   @default("ACTIVE")
+  isFeatured          Boolean  @default(false)
+  tags                String[] @default([])
+  variants            Json     @default("[]")
+  totalOrders         Int      @default(0)
+  deletedAt           DateTime?
+
+  seoTitle       String?
+  seoDescription String?
+
+  storeId    String  @db.ObjectId
+  categoryId String? @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category      ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  images        ProductImage[]
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orderItems    OrderItem[]
+  reviews       Review[]
+
+  @@index([storeId])
+  @@index([status])
+  @@index([categoryId])
+  @@index([isFeatured])
+  @@index([deletedAt])
+  @@index([storeId, status])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  url       String
+  publicId  String?
+  alt       String?
+  order     Int      @default(0)
+  productId String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CART
+// ═══════════════════════════════════════════════════════════════
+
+model Cart {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId String?  @unique
+  userId    String?  @unique @db.ObjectId
+  storeId   String?  @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store?     @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  items CartItem[]
+
+  @@index([storeId])
+  @@map("carts")
+}
+
+model CartItem {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  cartId           String   @db.ObjectId
+  productId        String   @db.ObjectId
+  quantity         Int      @default(1)
+  selectedVariants Json     @default("{}")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WISHLIST
+// ═══════════════════════════════════════════════════════════════
+
+model Wishlist {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WishlistItem[]
+
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  wishlistId String   @db.ObjectId
+  productId  String   @db.ObjectId
+  createdAt  DateTime @default(now())
+
+  wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId])
+  @@map("wishlist_items")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ORDER
+// ═══════════════════════════════════════════════════════════════
+
+model Order {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber        String   @unique
+  status             String   @default("NEW")
+  whatsappMessage    String
+  totalAmountInCents Int
+  itemCount          Int      @default(0)
+  notes              String?
+  customerId         String?  @db.ObjectId
+  storeId            String   @db.ObjectId
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  customer User?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  store    Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
+
+  @@index([storeId])
+  @@index([customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId          String   @db.ObjectId
+  productId        String   @db.ObjectId
+  productName      String
+  productImage     String?
+  quantity         Int
+  priceInCents     Int
+  selectedVariants Json     @default("{}")
+  createdAt        DateTime @default(now())
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REVIEW
+// ═══════════════════════════════════════════════════════════════
+
+model Review {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  reviewType String
+  rating     Int
+  comment    String?
+  isApproved Boolean  @default(false)
+  isReported Boolean  @default(false)
+  userId     String   @db.ObjectId
+  storeId    String?  @db.ObjectId
+  productId  String?  @db.ObjectId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store   Store?   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+  @@index([productId])
+  @@index([userId])
+  @@index([isApproved])
+  @@index([reviewType])
+  @@map("reviews")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COUPON
+// ═══════════════════════════════════════════════════════════════
+
+model Coupon {
+  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
+  code                String
+  discountType        String
+  discountValue       Int
+  minOrderValueInCents Int?
+  maxUses             Int?
+  usedCount           Int       @default(0)
+  isActive            Boolean   @default(true)
+  expiresAt           DateTime?
+  storeId             String    @db.ObjectId
+  createdAt           DateTime  @default(now())
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([code, storeId])
+  @@index([storeId])
+  @@index([code])
+  @@map("coupons")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATION
+// ═══════════════════════════════════════════════════════════════
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  link      String?
+  userId    String   @db.ObjectId
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIT LOG
+// ═══════════════════════════════════════════════════════════════
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  userId    String?  @db.ObjectId
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLATFORM SETTINGS
+// ═══════════════════════════════════════════════════════════════
+
+model PlatformSettings {
+  id                              String  @id @default(auto()) @map("_id") @db.ObjectId
+  siteName                        String  @default("متاجر زون")
+  siteNameEn                      String  @default("Mtajer Zone")
+  siteDescription                 String?
+  logo                            String?
+  favicon                         String?
+  supportEmail                    String?
+  supportWhatsapp                 String?
+  maintenanceMode                 Boolean @default(false)
+  allowRegistration               Boolean @default(true)
+  requireEmailVerification        Boolean @default(true)
+  autoApproveStores               Boolean @default(false)
+  starterMonthlyPriceInCents      Int     @default(19900)
+  starterYearlyPriceInCents       Int     @default(15900)
+  professionalMonthlyPriceInCents Int     @default(59900)
+  professionalYearlyPriceInCents  Int     @default(47900)
+  enterpriseMonthlyPriceInCents   Int     @default(149900)
+  enterpriseYearlyPriceInCents    Int     @default(119900)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
