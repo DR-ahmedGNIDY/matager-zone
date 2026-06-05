@@ -25,6 +25,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  if (!process.env.DATABASE_URL) {
+    return staticPages;
+  }
+
   // ── Active stores ─────────────────────────────────────────
   const stores = await db.store.findMany({
     where:   { status: "ACTIVE", deletedAt: null },
