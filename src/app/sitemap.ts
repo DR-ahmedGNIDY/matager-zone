@@ -25,39 +25,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  if (!process.env.DATABASE_URL) {
+  try {
+    // ── Active stores ─────────────────────────────────────────
+    const stores = await db.store.findMany({
+      where:   { status: "ACTIVE", deletedAt: null },
+      select:  { slug: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+      take:    5000,
+    });
+
+    const storePages: MetadataRoute.Sitemap = stores.map((s) => ({
+      url:             `${base}/store/${s.slug}`,
+      lastModified:    s.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority:        0.8,
+    }));
+
+    // ── Active products ───────────────────────────────────────
+    const products = await db.product.findMany({
+      where:   { status: "ACTIVE", deletedAt: null, store: { status: "ACTIVE" } },
+      select:  { id: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
+      take:    50000,
+    });
+
+    const productPages: MetadataRoute.Sitemap = products.map((p) => ({
+      url:             `${base}/product/${p.id}`,
+      lastModified:    p.updatedAt,
+      changeFrequency: "weekly" as const,
+      priority:        0.7,
+    }));
+
+    return [...staticPages, ...storePages, ...productPages];
+  } catch {
     return staticPages;
   }
-
-  // ── Active stores ─────────────────────────────────────────
-  const stores = await db.store.findMany({
-    where:   { status: "ACTIVE", deletedAt: null },
-    select:  { slug: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-    take:    5000, // hard cap
-  });
-
-  const storePages: MetadataRoute.Sitemap = stores.map((s) => ({
-    url:             `${base}/store/${s.slug}`,
-    lastModified:    s.updatedAt,
-    changeFrequency: "weekly" as const,
-    priority:        0.8,
-  }));
-
-  // ── Active products ───────────────────────────────────────
-  const products = await db.product.findMany({
-    where:   { status: "ACTIVE", deletedAt: null, store: { status: "ACTIVE" } },
-    select:  { id: true, updatedAt: true },
-    orderBy: { updatedAt: "desc" },
-    take:    50000, // hard cap
-  });
-
-  const productPages: MetadataRoute.Sitemap = products.map((p) => ({
-    url:             `${base}/product/${p.id}`,
-    lastModified:    p.updatedAt,
-    changeFrequency: "weekly" as const,
-    priority:        0.7,
-  }));
-
-  return [...staticPages, ...storePages, ...productPages];
 }
