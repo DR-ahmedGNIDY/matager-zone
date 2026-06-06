@@ -13,7 +13,12 @@ const cairo = Cairo({
 
 // ── Site-wide default metadata ────────────────────────────────
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || APP_URL),
+  metadataBase: new URL(
+    (() => {
+      try { return new URL(process.env.NEXT_PUBLIC_APP_URL || APP_URL).href; }
+      catch { return "http://localhost:3000"; }
+    })()
+  ),
 
   title: {
     default:  `${APP_NAME} | منصة المتاجر الرقمية عبر واتساب`,
