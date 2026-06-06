@@ -42,3 +42,5 @@ prisma/migrations/dev.db
 
 # pm2
 ecosystem.config.js.bak
+
+.vercel
