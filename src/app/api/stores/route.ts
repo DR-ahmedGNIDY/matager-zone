@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     // ── Resolve category ─────────────────────────────────────
     const category = await db.storeCategory.findFirst({
       where: {
-        OR: [{ id: data.categoryId }, { slug: data.categoryId }],
+        slug: data.categoryId,
         isActive: true,
       },
       select: { id: true },
