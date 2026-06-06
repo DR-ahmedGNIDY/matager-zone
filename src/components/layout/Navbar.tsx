@@ -8,14 +8,16 @@ import { ShoppingCart, Heart, Search, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PUBLIC_NAV_LINKS, APP_NAME } from "@/lib/constants";
 
-// Logo component — SVG matching original design
+// Logo component
 function LogoIcon({ size = 40 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <path d="M50 5C30.67 5 15 20.67 15 40C15 58 37 78 50 95C63 78 85 58 85 40C85 20.67 69.33 5 50 5Z" fill="#4F6BFF"/>
-      <path d="M50 15C50 15 35 30 35 45C35 48 38 50 40 50L44 50L44 65L56 65L56 50L60 50C62 50 65 48 65 45C65 30 50 15 50 15Z" fill="white"/>
-      <path d="M44 30L44 50L56 50L56 30L50 22Z" fill="white"/>
-    </svg>
+    <img
+      src="/logo.png"
+      alt="Mtajer Zone Logo"
+      width={size}
+      height={size}
+      style={{ objectFit: "contain" }}
+    />
   );
 }
 
